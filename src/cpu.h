@@ -8,154 +8,104 @@
 #define DEBUG(msg, ...) fprintf(stdout, msg, __VA_ARGS__)
 #define ERROR(msg, ...) fprintf(stderr, msg, __VA_ARGS__)
 
-#define CPU_WIDTH unsigned char
-#define MEMORY_CAP 255
-#define REG_COUNT 10
+typedef unsigned char u8;
+typedef unsigned short u16;
 
-typedef CPU_WIDTH memory_t[MEMORY_CAP];
-typedef CPU_WIDTH cregister;
+#define CPU_PROGRAM_MEM 0x8000
+#define CPU_RESET_MEM   0xFFFC
+#define CPU_STACK_START 0x0100
+#define CPU_ZERO_PAGE_END 0xFF
+
+#define MEMORY_CAP 0xFFFF
+
+typedef u8 memory_t[MEMORY_CAP];
 
 typedef struct {
-	cregister* PC;
-	cregister reg[10];
-	CPU_WIDTH* mem;
+	u16 PC; // program counter
+	u16 SP; // stack pointer
+
+	u8 IR; // instruction register
+	u8 A;  // ACCUMULATOR
+	u8 X;  // index register
+	u8 Y;  // index register
+	
+	u8 PSW; // status flags
+	
+	u8  *mem;
 } cpu_t;
 
 typedef enum {
-	R_MAR,
-	R_MDR,
-	R_IR,
-	R_AC,
-	R_PSW,
-	R_A,
-	R_B,
-} CPU_REGISTERS;
-
-typedef enum {
-	PSW_N = 1,  // is result negative
-	PSW_Z = 2,  // is result zero
-	PSW_C = 4,  // carry
-	PSW_V = 8,  // overflow 
+	PSW_C = 1,  // carry
+	PSW_Z = 2,  // zero
+	PSW_I = 4,  // interrupt
+	PSW_D = 8,  // decimal
+	PSW_B = 16,  // break 
+	PSW_O = 32,  // overflow 
+	PSW_N = 64,  // negative 
 } PSW_FLAGS;
 
 typedef enum {
-	I_NOP, 	// do nothing
-	I_INC, 	// ++
-	I_DEC, 	// --
-	
-	I_ADD, 	// +
-	I_SUB, 	// -
-	
-	I_SHL, 	// shift left
-	I_SHR, 	// shift right
-
-	I_AND, 	// &
-	I_OR,  	// |
-	I_XOR, 	// ^
-	I_CMP, 	// compare
-
-	I_PUSH,	// push value or addres to the stack
-	I_POP,	// pop the value from the stack
-
-	I_MOV,
-	I_JMP,
-
+	IR_NOP,
+	IR_LDA_IM = 0xA9,
+	IR_LDA_ZP = 0xA5
 } CPU_INSTRUCTION_SET;
-
-typedef enum {
-	IR_NO_OP = 32,		// [OC]
-	IR_ONE_OP = 64,		// [OC] OP
-	IR_OP2_ADDR = 128,	// [OC] OP (OP)(ADDRESS)
-				// false = second operand is literal
-} IR_FLAGS;
 
 cpu_t* cpu_create(memory_t mem) {
 	cpu_t* ncpu = (cpu_t*)malloc(sizeof(cpu_t));
 	ncpu->mem = mem;
-	for (uint8_t i = 0; i < REG_COUNT; i++)
-		ncpu->reg[i] = 0;
-	ncpu->PC = &ncpu->reg[0];
 	return ncpu;
 }
 
-void cpu_fetch_ir(cpu_t* cpu) {
-	// 8 bit mode
-	cpu->reg[R_IR] = (cregister)(cpu->mem[*cpu->PC]);
+void cpu_init_mem(memory_t mem) {
+	// zero out memory
+	for (u16 i = 0; i < MEMORY_CAP; i++)
+		mem[i] = 0;
+
+	mem[CPU_RESET_MEM] = 0x80;
+	mem[CPU_RESET_MEM + 1] = 0x00;
 }
 
-void cpu_write_mem(cpu_t* cpu, CPU_WIDTH offset, CPU_WIDTH value) {
+void cpu_reset(cpu_t* cpu) {
+	cpu->PC = (cpu->mem[0xFFFC] << 8) | (cpu->mem[0xFFFD]);
+	cpu->SP = 0x01FF;
+	cpu->A = cpu->X = cpu->Y = 0;
+	cpu->PSW = 0;
+	cpu->IR = 0;
+}
+
+void cpu_fetch_ir(cpu_t* cpu) {
+	cpu->IR = cpu->mem[cpu->PC++];
+}
+
+void cpu_write_mem(cpu_t* cpu, u16 offset, u8 value) {
 	cpu->mem[offset] = value;
 }
 
-CPU_WIDTH cpu_decode_exec(cpu_t* cpu) {
-	cregister* RA = &cpu->reg[R_A];
-	cregister* RB = &cpu->reg[R_B];
+void LDA_set_flags(cpu_t* cpu) {
+	cpu->PSW |= (cpu->A == 0) ? PSW_Z : 0;
+	cpu->PSW |= (cpu->A & 0x80) ? PSW_N : 0;
+}
 
-	*RA = (cregister)(cpu->mem[*cpu->PC + 1]);
-	*RB = (cregister)(cpu->mem[*cpu->PC + 2]);
-
-	CPU_WIDTH pc_offset = 1;
-
-	switch (cpu->reg[R_IR] & 31) {
-	case I_NOP: break;
-	case I_INC:
-		cpu->mem[*RA]++;
-		pc_offset++;
-		break;
-
-	case I_DEC:
-		cpu->mem[*RA]--;
-		pc_offset++;
-		break;
-
-	case I_SHL:
-		if (cpu->reg[R_IR] & IR_ONE_OP) {
-			cpu->reg[R_AC] <<= *RA;
-			pc_offset++;
-		}
-		else {
-			cpu->mem[*RA] <<= *RB;
-			pc_offset += 2;
-		}
-
-		break;
-
-	case I_ADD:
-		cpu->mem[*RA] += (cpu->reg[R_IR] & IR_OP2_ADDR) ? cpu->mem[*RB] : *RB;
-		pc_offset += 2;
-		break;
-
-	case I_SUB:
-		cpu->mem[*RA] -= (cpu->reg[R_IR] & IR_OP2_ADDR) ? cpu->mem[*RB] : *RB;
-		pc_offset += 2;
-		break;
-
-	case I_MOV:
-		cpu->mem[*RA] = (cpu->reg[R_IR] & IR_OP2_ADDR) ? cpu->mem[*RB] : *RB;
-		pc_offset += 2;
-		break;
-
-	case I_JMP:
-		*cpu->PC = *RA;
-		pc_offset = 0;
-		break;
-
-	default:
-		ERROR("segfault: %hhX\t%hhX\n", *cpu->PC, cpu->reg[R_IR]);
-		exit(1);
+void cpu_exec_ir(cpu_t* cpu) {
+	u8 addr;
+	switch (cpu->IR) {
+		case IR_LDA_IM:
+			cpu->A = cpu->mem[cpu->PC++];
+			LDA_set_flags(cpu);
+			break;
+		
+		case IR_LDA_ZP:
+			addr = cpu->mem[cpu->PC++];
+			cpu->A = cpu->mem[addr % (CPU_ZERO_PAGE_END + 1)];
+			LDA_set_flags(cpu);
+			break;
 	}
-
-	return pc_offset;
 }
 
 void cpu_run(cpu_t* cpu) {
-	int i = 0;
-	while (*cpu->PC != MEMORY_CAP) {
+	while (cpu->PC != MEMORY_CAP) {
 		cpu_fetch_ir(cpu);
-		*cpu->PC += cpu_decode_exec(cpu);
-		printf("%hhX\t%hhX\n", *cpu->PC, cpu->reg[R_IR]);
-		i++;
-		if (i > 5) break;
+		cpu_exec_ir(cpu);
 	}
 }
 

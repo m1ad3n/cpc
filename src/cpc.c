@@ -1,16 +1,22 @@
 #include "cpu.h"
 
 int main(void) {
-	memory_t ram = {
-		I_INC, 0xaa,
-		I_SHL, 0xaa, 0x1,
-		I_JMP, 0x0
-	};
+	memory_t mem;
+	cpu_init_mem(mem);
 
-	cpu_t* cpc = cpu_create(ram);
+	// PROGRAM STARTS
+	mem[0x8000] = IR_LDA_ZP;
+	mem[0x8001] = 0x39;
+	mem[0x0039] = 0xFA;
+	// PROGRAM ENDS
+
+	cpu_t* cpc = cpu_create(mem);
+
+	cpu_reset(cpc);
 	cpu_run(cpc);
-
-	DEBUG("0xAA = %d\n", cpc->mem[0xaa]);
+	
+	DEBUG("AC = %hhX\n", cpc->A);
 	cpu_destroy(cpc);
+
 	return 0;
 }
