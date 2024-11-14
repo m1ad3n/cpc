@@ -199,13 +199,13 @@ void cpu_exec_ir(D4X* cpu) {
 
 	case IR_PUSH:
 		if (cpu->SP == STACK_START) cpu_panic(cpu, "stack overflow");
-		cpu->mem[--cpu->SP] = *op1;
+		cpu->mem[cpu->SP--] = *op1;
 		cpu->PC += op1_offset;
 		break;
 
 	case IR_POP:
 		if (cpu->SP == 0xFF) cpu_panic(cpu, "stack underflow");
-		cpu->mem[++cpu->SP] = *op1;
+		*op1 = cpu->mem[++cpu->SP];
 		cpu->PC += op1_offset;
 		break;
 

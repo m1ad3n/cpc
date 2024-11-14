@@ -6,26 +6,14 @@ int main(void) {
 
 	// PROGRAM STARTS
 
-	/* MOV %E, 0xFFFA (17) */
-	mem[0x1000] = IR_MOV | IR_OP1_REG;
-	mem[0x1001] = REG_E;
-	mem[0x1002] = 0xFA;
-	mem[0x1003] = 0xFF;
+	/* PUSH 0xCA */
+	mem[0x1000] = IR_PUSH;
+	mem[0x1001] = 0xFB;
+	mem[0x1002] = 0xFF;
 
-	/* INC %E */
-	mem[0x1004] = IR_INC | IR_OP1_REG;
-	mem[0x1005] = REG_E;
-
-	/* CMP %E, 0xFFFB (202) */
-	mem[0x1006] = IR_CMP | IR_OP1_REG;
-	mem[0x1007] = REG_E;
-	mem[0x1008] = 0xFB;
-	mem[0x1009] = 0xFF;
-
-	/* JL 0x1004 */
-	mem[0x100A] = IR_JL;
-	mem[0x100B] = 0x04;
-	mem[0x100C] = 0x10;
+	/* POP %B */
+	mem[0x1003] = IR_POP | IR_OP1_REG;
+	mem[0x1004] = REG_B;
 
 	/* some data constants */
 	mem[0xFFFA] = 0x11;
@@ -38,7 +26,7 @@ int main(void) {
 	cpu_reset(cpu);
 	cpu_run(cpu);
 	
-	printf("REG E = %d\n", cpu->regs[REG_E]);
+	printf("REG B = %hhX\n", cpu->regs[REG_B]);
 	cpu_destroy(cpu);
 
 	return 0;
