@@ -1,0 +1,79 @@
+============== BASIC INFO ==============
+
+D4X is an 8-bit computer that uses 16-bit addresses
+and has 30,000 bytes reserved for video memory
+
+============== REGISTERS ==============
+
+	PC  -> PROGRAM COUNTER
+	IR  -> INSTRUCTION RG
+	SP  -> STACK POINTER
+	PSW -> Program Status Word
+	AC  -> Accumulator
+
+	B
+	C
+	D
+	E
+	H   -> index register
+	L   -> index register
+
+============== INSTRUCTIONS ==============
+
+| aorr - address or register
+| addr - address in memory
+
+MOV   aorr, aorr  	- copys value to the first operand
+ADD   aorr, aorr	- adds value
+SUB   aorr, aorr	- subtracts value
+INC   aorr			- increments value
+DEC   aorr			- decrements value 
+CMP   aorr, aorr	- compares the value and sets the PSW rg flags
+AND   aorr, aorr    - and logical op
+OR    aorr, aorr    - or logical op
+XOR   aorr, aorr    - xor logical op
+PUSH  aorr			- pushes value to the stack
+POP   aorr			- pops the value from the stack
+
+=== JUMP INR
+
+JMP   addr 			- jump to the address
+JE    addr 			- jump if EF is set
+JZ    addr 			- same as JE
+JNE   addr 			- jump when EF is clear
+JNZ   addr 			- same as JNE
+JLE   addr 			- jump if EF = 1 or LF = 1
+JL    addr 			- jump if LF = 1
+JGE   addr          - jump if EF = 1 or GF = 1
+JG    addr          - jump if GF = 1
+
+============== PSW FLAGS ==============
+
+1 bit  ZF -> set if result is zero
+2 bit  SF -> set if result is negative
+3 bit  CF -> set if result returned carry
+4 bit  OF -> set if result overflowed
+5 bit  EF -> set if op1 == op2
+6 bit  GF -> set if op1 >  op2
+7 bit  LF -> set if op1 <  op2
+
+============== MEMORY ==============
+
+	+---------------------+
+	|        STACK        |
+	|   0x0000 - 0x00FF   |
+	+---------------------+
+	|         SRAM        |
+	|   0x0100 - 0x0FFF   |
+	+---------------------+
+	|                     |
+	|       PROGRAM       |
+	|   0x1000 - 0x8888   |
+	|                     |
+	+---------------------+
+	|                     |
+	|        VIDEO        |
+	|   0x8889 - 0xFFFF   |
+	|                     |
+	+---------------------+
+

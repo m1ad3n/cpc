@@ -6,11 +6,11 @@ OUT=obj
 SRC=src
 TARGET=$(notdir $(shell pwd))
 
-$(TARGET): $(OUT)/cpc.o
+$(TARGET): $(OUT)/d4x.o
 	@$(CC) -o $@ $^ $(LDFLAGS)
 	@echo -e "LD $@\e[32;1m PASS\e[0m"
 
-$(OUT)/%.o: $(SRC)/%.c $(SRC)/cpu.h | $(OUT)
+$(OUT)/%.o: $(SRC)/%.c $(SRC)/d4x.h $(SRC)/d4x_mem.h | $(OUT)
 	@$(CC) $(CFLAGS) -c -o $@ $<
 	@echo -e "CC $@\e[32;1m PASS\e[0m" 
 
